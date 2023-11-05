@@ -1,9 +1,10 @@
+BUILD_DIR="build"
 OPT_LEVEL="-DDO_BUFF_EMBED -O3"
 #OPT_LEVEL="-O3"
-cc -DCORE_SET_UNSAFE_RELEASE $OPT_LEVEL -o main_loops_unsafe main_loops.c
-cc $OPT_LEVEL -o main_loops main_loops.c
-cc $OPT_LEVEL -o main_loops_ptrs main_loops_ptrs.c
-cc $OPT_LEVEL -o main_loops_soa main_loops_soa.c
+cc -DCORE_SET_UNSAFE_RELEASE $OPT_LEVEL -o $BUILD_DIR/main_loops_unsafe main_loops.c
+cc $OPT_LEVEL -o $BUILD_DIR/main_loops main_loops.c
+cc $OPT_LEVEL -o $BUILD_DIR/main_loops_ptrs main_loops_ptrs.c
+cc $OPT_LEVEL -o $BUILD_DIR/main_loops_soa main_loops_soa.c
 
 # Rust build
 cd rs
@@ -19,16 +20,16 @@ zig build-exe main.zig -OReleaseFast -lc
 ARGS="50000 30"
 
 echo "[Zig] Loops AOS"
-time ./main $ARGS
+time ./$BUILD_DIR/main $ARGS
 
 echo "[C] Loops SOA"
-time ./main_loops_soa $ARGS
+time ./$BUILD_DIR/main_loops_soa $ARGS
 
 # echo "[C Unsafe Release] Loops"
 # time ./main_loops_unsafe $ARGS
 
 echo "[C] Loops"
-time ./main_loops $ARGS
+time ./$BUILD_DIR/main_loops $ARGS
 
 #echo "[C] Loops Ptrs"
 #time ./main_loops_ptrs $ARGS

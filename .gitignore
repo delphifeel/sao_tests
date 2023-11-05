@@ -1,1 +1,4 @@
 rs/target
+main
+main.o
+build
