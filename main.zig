@@ -1,34 +1,12 @@
 const std = @import("std");
 const assert = std.debug.assert;
-const c = @cImport({
-    @cInclude("config.h");
-});
 
 const Tag = struct {
     v1: u32,
     v2: u32,
     v3: u32,
-    v4: u64,
+    buff: [64]u8,
 };
-
-fn tag_init(tag: *Tag, i: u32) void {
-    tag.v1 = i * 2;
-    tag.v2 = i * 3;
-    tag.v3 = i * 4;
-}
-
-fn tag_same(tag1: Tag, tag2: Tag) bool {
-    if (tag1.v1 != tag2.v1) {
-        return false;
-    }
-    if (tag1.v2 != tag2.v2) {
-        return false;
-    }
-    if (tag1.v3 != tag2.v3) {
-        return false;
-    }
-    return true;
-}
 
 pub fn main() !void {
     std.debug.print("This is zig\n", .{});
@@ -36,28 +14,58 @@ pub fn main() !void {
     //defer assert(gpa.detectLeaks() == false);
     //var allocator = gpa.allocator();
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     //defer arena.deinit();
-    var allocator = arena.allocator();
+    // var allocator = arena.allocator();
 
-    //var allocator = std.heap.page_allocator;
+    var allocator = std.heap.c_allocator;
 
-    var v = try std.ArrayList(Tag).initCapacity(allocator, c.COUNT);
-    defer v.deinit();
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    var COUNT_2 = try std.fmt.parseInt(u32, args[1], 10);
+
+    var LOOP_TIMES = try std.fmt.parseInt(u32, args[2], 10);
+    var v1_arr_to_find = [_]u32{
+        COUNT_2 / 2,
+        COUNT_2 / 2 + COUNT_2 / 6,
+        COUNT_2 / 2 + COUNT_2 / 5,
+        COUNT_2 / 2 + COUNT_2 / 4,
+        COUNT_2 / 2 + COUNT_2 / 3,
+    };
+
+    var v = std.MultiArrayList(Tag){};
+    defer v.deinit(allocator);
+
+    try v.ensureTotalCapacity(allocator, COUNT_2);
 
     // push
-    for (0..c.COUNT) |i| {
-        var t: Tag = undefined;
-        tag_init(&t, @intCast(i));
-        v.appendAssumeCapacity(t);
+    for (0..COUNT_2) |i_u64| {
+        var i: u32 = @intCast(i_u64);
+        var i_mul: u8 = @intCast(i % 200);
+        v.appendAssumeCapacity(.{
+            .v1 = i,
+            .v2 = i + 1,
+            .v3 = i + 2,
+            .buff = [_]u8{i_mul} ** 64,
+        });
     }
 
     // find
-    var tag_to_find: Tag = undefined;
-    tag_init(&tag_to_find, c.COUNT / 2);
-    for (v.allocatedSlice()) |t| {
-        if (tag_same(tag_to_find, t)) {
-            std.debug.print("We found it\n", .{});
+    var sum: u64 = 0;
+    for (0..LOOP_TIMES) |_| {
+        for (v1_arr_to_find) |v1_to_find| {
+            for (v.items(.v1), 0..) |v1, i| {
+                if (v1 == v1_to_find) {
+                    var t = &v.get(i);
+                    sum += t.v2 + t.v3;
+                    for (t.buff) |b| {
+                        sum += b;
+                    }
+                }
+            }
         }
     }
+
+    std.debug.print("sum: {}\n", .{sum});
 }
